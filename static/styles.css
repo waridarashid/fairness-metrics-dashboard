@@ -1,0 +1,677 @@
+/* =============== Global =============== */
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  background: #eaeaea;
+  display: flex;           /* NEW: let body be a flex column */
+  flex-direction: column;  /* header on top, dashboard below */
+  height: 100vh;           /* fill viewport */
+  overflow: hidden;        /* NO window scroll */
+}
+
+header#dashboard-title {
+  background: #131a24;
+  color: #fff;
+  padding: 8px;
+  text-align: center;
+  font-size: 14px;
+  font-style: normal;
+}
+
+/* One knob to keep Sankey + PCP the same height */
+:root { --viz-height: 280px; }
+
+/* =============== 3-column layout =============== */
+.dashboard-container{
+  display: grid;
+  grid-template-columns: 300px 1fr 360px;
+  grid-template-rows: auto 1fr;
+  row-gap: 2px;          /* smaller vertical gap between top + Feature Explorer */
+  column-gap: 8px;       /* keep nice space between the three top panels */
+  padding: 6px;
+  height: calc(100vh - 48px);
+  box-sizing: border-box;
+  align-items: stretch;
+}
+
+/* Main panels on top row */
+#controls-panel { grid-row: 1 / 3; }             /* still spans both rows on the left */
+#main-panel {
+  grid-column: 2 / 4;   /* span both the center (1fr) and right (360px) columns */
+  grid-row: 1;
+}
+
+#summary-panel  { display: none; } /* right, top row only */
+
+/* Feature Explorer spans across center + right below */
+#feature-explorer {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(30, 31, 31, 0.15);
+
+  /* NEW: shrink from the bottom instead of stretching */
+  align-self: start;              /* anchor to the top edge of the row */
+  max-height: 300px;              /* tune this number to how short you want it */
+  overflow: hidden;               /* prevent the container itself from growing */
+}
+
+/* Common panel chrome */
+#controls-panel,
+#main-panel,
+#summary-panel{
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(30, 31, 31, 0.15);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: auto;                          /* content scrolls inside */
+}
+
+.panel-header{
+  background: #303d4e;
+  color: #fff;
+  font-style: bold;
+  font-size: 14px;
+  text-align: center;
+  padding: 6px;
+}
+
+/* =============== Left: Controls =============== */
+#controls-panel { width: 100%; }
+#controls-panel .content{
+  padding: 10px;
+  padding-top: 0px;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.section h3 { margin: 20px 0 8px; font-size: 14px; }
+
+/* Reduce gaps in metric equation section */
+#metric-equation-wrap {
+  margin-top: 8px !important;
+  margin-bottom: 8px;
+}
+#metric-equation-wrap h3 {
+  margin: 8px 0 4px !important;
+}
+
+.checkbox-group label{
+  display: block;
+  margin: 5px 0;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+input[type="range"]{ width: 100%; }
+
+/* =============== Center: Main =============== */
+#main-panel{
+  height: 350px; /* Fixed height instead of max-height */
+  width: 100%;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  overflow: hidden; /* Prevent main panel from scrolling */
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+/* =============== Feature Explorer =============== */
+#feature-explorer {
+  grid-column: 2 / 4;              /* span center + right */
+  grid-row: 2;                     /* bottom row */
+  margin-top: 8px;                 /* pushes it a bit lower */
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(30, 31, 31, 0.15);
+}
+#feature-explorer-content {
+  display: flex;
+  gap: 8px;
+  flex: 1 1 auto;
+  padding: 8px;
+  background: #fff;
+}
+
+/* ─ Sankey card ─ */
+#sankey-section{ display:flex; flex-direction:column; }
+#sankey-placeholder{
+  height: var(--viz-height);
+  background: #fff;
+  margin-top: 10px;
+  overflow-y: auto;  /* Add scroll if content is too tall */
+  overflow-x: hidden;
+}
+#sankey-placeholder svg{ width: 100%; display:block; }
+
+/* Legends row under Sankey */
+#legend-row{
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+  margin: 2px 10px 6px;
+}
+.legend-block{ display:flex; flex-direction:column; }
+.legend-block svg{ display:block; overflow:visible; }
+.legend-title{
+  font: 600 11px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  margin: 0 0 4px 2px;
+  white-space: nowrap;
+}
+
+/* Sankey link hover helpers */
+.sankey-link       { transition: opacity .25s, stroke-width .25s; }
+.sankey-link.dim   { opacity: .15; }
+.sankey-link.focus { opacity: 1 !important; }
+
+/* =============== PCP Axis Title Button Styling =============== */
+.axis-title {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  background-color: #bfbfbf;
+  padding: 4px 6px;
+  border-radius: 3px;
+  border: 1px solid #3e3e3e;
+  font-weight: 500;
+  font-size: 11px !important;
+}
+
+.axis-title:hover {
+  background-color: #969696;
+  border-color: #616161;
+  font-weight: 600;
+}
+
+.axis-title.neutralize-selected {
+  background-color: #d62728;
+  color: white !important;
+  border-color: #a02020;
+  font-weight: bold;
+  fill: white;
+}
+
+.axis-title.neutralize-selected:hover {
+  background-color: #a02020;
+  border-color: #7a1818;
+}
+
+/* ─ PCP + Distribution side-by-side ─ */
+#pcp-and-distribution,
+#feature-explorer-content {
+  flex: 1 1 auto;
+  display: flex;
+  gap: 8px;
+}
+
+#pcp-section { 
+  flex: 2 1 0; 
+  display: flex; 
+  flex-direction: column;
+  min-width: 500px;
+  background: #f7f7f7;
+  border: 1px solid #ffffff;
+}
+
+#distribution-panel {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 300px;
+  background: #f7f7f7;
+  border: 1px solid #ffffff;
+}
+
+.panel-body,
+#distribution-panel .panel-body {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 4px 10px 4px;   /* was 8px top/bottom */
+  background: #fff;
+  position: relative;  /* For absolute positioning of reset button */
+}
+#pcp{
+  align-items: self-start;
+  flex: 1 1 auto;            /* NEW: grow to full height */
+  min-height: 240px;
+  background: #fff;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 10px 45px 10px;  /* Extra bottom padding for reset button */
+}
+
+#pcp svg{ 
+  width: max(100%, 1200px); 
+  height: 100%; 
+  display: block;
+  min-height: 300px;
+}
+
+#pcp-legend{
+  flex: 0 0 auto;
+  padding: 2px 12px 4px;   /* smaller top + bottom */
+  background: #fff;
+}
+.legend-box{
+  display:inline-block; width:12px; height:12px;
+  margin-right:6px; border-radius:2px; vertical-align:-2px;
+}
+
+/* =============== Right: Summary =============== */
+#summary-panel { width: 100%; }
+#summary-panel .content{
+  padding: 5px;
+  overflow: auto;
+}
+#summary-panel .content > *:first-child{
+  margin-top: 0;
+}
+#summary-panel .content h3{
+  margin: 6px 0 8px;
+}
+
+/* Stacked bar chart styling */
+#pcp-slice-summary {
+  margin-top: 0px;
+  padding-top: 0px;
+  align-content: start;
+}
+
+#pcp-slice-summary .slice-title {
+  font-weight: 600;
+  margin: 0px 0 6px;
+  font-size: 12px;
+}
+
+#pcp-slice-summary .slice-sub {
+  color: #666;
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+
+#pcp-metrics .slice-title { font-weight: 600; margin: 4px 0 2px; }
+#pcp-metrics .slice-sub   { color: #666; font-size: 12px; margin-bottom: 6px; }
+#pcp-metrics .slice-group-title { font-weight: 600; font-size: 12px; margin: 8px 0 4px; }
+#pcp-metrics svg text { font-family: inherit; }
+
+/* Neutralization UI styling */
+#neutralize-ui {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px;
+  margin-top: 10px;
+  background-color: #f9f9f9;
+}
+
+#neutralize-ui h3 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.neutralize-selected-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  min-height: 24px;
+  align-items: center;
+}
+
+.neutralize-chip {
+  background-color: #d62728;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.neutralize-chip:hover {
+  background-color: #a02020;
+}
+
+.neutralize-chip .remove-chip {
+  cursor: pointer;
+  font-weight: bold;
+  margin-left: 2px;
+}
+
+/* =============== Neutralization Buttons =============== */
+.neutralize-buttons {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+#btn-apply-neutral,
+#btn-revert-neutral {
+  flex: 1;
+  padding: 8px;
+  font-size: 11px;
+  border: none;
+  border-radius: 3px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+#btn-apply-neutral {
+  background: #0078d4;
+  color: white;
+}
+
+#btn-apply-neutral:hover {
+  background: #005a9e;
+}
+
+#btn-apply-neutral:active {
+  background: #003d82;
+}
+
+/* Disabled state (initial) */
+#btn-revert-neutral[disabled] {
+  background: #f0f0f0;
+  color: #999;
+  border: 1px solid #ddd;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* Enabled state (after neutralization applied) */
+#btn-revert-neutral:not([disabled]) {
+  background: #d32f2f;
+  color: white;
+  border: 1px solid #b71c1c;
+  cursor: pointer;
+  opacity: 1;
+}
+
+#btn-revert-neutral:not([disabled]):hover {
+  background: #b71c1c;
+  border-color: #7a1818;
+}
+
+#btn-revert-neutral:not([disabled]):active {
+  background: #7a1818;
+  border-color: #5c1414;
+}
+
+.neutralize-info {
+  font-size: 10px;
+  color: #666;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* Heatmap styles */
+#heatmap svg rect { stroke: #eee; }
+#heatmap svg text { font-size: 14px; }
+
+#feature-summary-controls{
+  display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;
+}
+#color-legend svg text{ font-size:14px; }
+#eo-component { display:none; }
+
+/* =============== Misc =============== */
+.shap-swatch{
+  display:inline-block;
+  width:70px; height:14px; margin-right:4px; vertical-align:middle;
+  border:1px solid #666;
+  background: linear-gradient(to right, #d73027 0%, #ffffff 50%, #4575b4 100%);
+}
+
+/* Row with two sibling panels */
+.row-split {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* Ensure consistent padding for row-splits in main panel */
+#main-panel .row-split {
+  padding: 0 8px 8px 8px;  /* No top padding, keeps bottom and side padding */
+  gap: 8px;
+}
+
+/* Panels (reuse your existing .panel-header style for the grey bar) */
+.panel {
+  flex: 1 1 0;
+  min-width: 340px;        /* prevents collapsing too much */
+  background: #e0e0e0;     /* optional */
+  border: 1px solid #ffffff;  /* optional */
+  margin: 0;
+  padding: 0;
+  overflow: hidden;  /* Ensures header sits flush */
+}
+
+.panel .panel-header {
+  margin: 0;
+  text-align: center;  /* Ensure headers are centered */
+}
+
+.panel-body {
+  padding: 8px 10px;
+  background: #fff;        /* optional */
+}
+.pcp-context-band { pointer-events: none; } /* bands shouldn't capture hovers */
+.pcp-stream { mix-blend-mode: normal; }   /* nicer overlap */
+.pcp-outcome { mix-blend-mode: normal; } 
+
+/* Legends under Sankey */
+#legend-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+.legend-block { flex: 0 0 auto; }
+
+/* Make the Sankey SVG fit its column's width */
+#sankey-placeholder svg {
+  display: block;
+  /* height: 100%; */ /* REMOVED: Let JavaScript set height dynamically */
+  min-width: 90%;            /* ─ NEW: don't shrink below container */
+}
+
+/* Sankey node emphasis */
+.sankey-node { cursor: pointer; transition: opacity .15s ease, stroke-width .15s ease; }
+.sankey-node.is-context  { stroke: #111; stroke-width: 3px; }
+.sankey-node.is-selected { stroke: #111; stroke-width: 3px; }
+.sankey-node.is-muted    { opacity: 0.25; }
+
+/* Stack vertically on narrow screens */
+@media (max-width: 1100px) {
+  .row-split { flex-direction: column; }
+}
+
+#overall-gaps-chart svg g text { font-size: 10px; }
+
+.muted {
+  color: #999;
+}
+
+#feature-distribution-chart {
+  background: #f9f9f9;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+#feature-distribution-chart .muted {
+  color: #999;
+  font-size: 12px;
+}
+
+.pcp-reset-row {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 100;
+}
+
+#pcp-reset-brushes {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid #999;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+#pcp-reset-brushes:hover {
+  background: #f0f0f0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+#feature-distribution-chart .distribution-toggle-row {
+  display: inline-flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+#feature-distribution-chart .dist-toggle-btn {
+  font-size: 10px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid #ccc;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+
+#feature-distribution-chart .dist-toggle-btn.active {
+  background: #1b79c1;
+  color: #fff;
+  border-color: #1b79c1;
+}
+
+#feature-distribution-chart .distribution-chart-wrap {
+  margin-top: 4px;
+}
+
+/* =============== Confusion Bar Visualization =============== */
+
+/* Enable scrolling for confusion matrix and metric scores panels */
+#sankey-and-metrics {
+  flex: 1 1 auto; /* Take available space in main-panel */
+  min-height: 0; /* Allow shrinking below content size */
+}
+
+#sankey-panel,
+#group-metrics-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Fill parent height */
+  overflow: hidden; /* Prevent panel itself from scrolling */
+  min-height: 0; /* Allow flex shrinking */
+}
+
+#sankey-panel .panel-body,
+#group-metrics-panel .panel-body {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  flex: 1 1 auto;
+  min-height: 0; /* Important: allows flex child to shrink below content size */
+  padding-bottom: 20px !important; /* Extra bottom padding for breathing room */
+}
+
+#sankey-placeholder,
+#group-bars {
+  min-width: fit-content;
+  min-height: fit-content;
+}
+
+/* Ensure SVG inside sankey-placeholder grows with content */
+#sankey-placeholder svg {
+  display: block;
+  /* Let JavaScript control height dynamically */
+  width: 100%;
+}
+
+/* Ensure metric bars SVG grows with content */
+#group-bars svg {
+  display: block;
+  /* Let JavaScript control height dynamically */
+  width: 100%;
+}
+
+/* Bar segments - base styles */
+.bar-segment {
+  transition: opacity 0s ease-in-out, stroke-width 0.4s ease, stroke 0.4s ease, filter 0.5s ease;
+}
+
+/* Active state - strong outline, full opacity */
+.bar-segment.active {
+  stroke: #000 !important;
+  stroke-width: 2 !important;
+  opacity: 0.8 !important;
+  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.5));
+}
+
+/* Dimmed state - low opacity */
+.bar-segment.dimmed {
+  opacity: 0.15 !important;
+}
+
+/* Metric highlighting - Numerator (subtle grey shadow with green border) */
+.bar-segment.metric-numerator {
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3));
+}
+
+/* Metric highlighting - Denominator only (subtle grey shadow with amber border) */
+.bar-segment.metric-denominator-only {
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3));
+}
+
+/* Hover state - thin outline unless already active */
+.bar-segment.hover:not(.active) {
+  stroke: #ffffff !important;
+  stroke-width: 0 !important;
+  opacity: 1 !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+}
+
+/* Hover state with metric highlighting - slightly stronger grey shadow */
+.bar-segment.metric-numerator {
+  filter: drop-shadow(0 0 2px rgb(63, 63, 63));
+}
+
+
+
+/* Active + hover */
+.bar-segment.active.hover {
+  opacity: 1 !important;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25));
+}
+
+/* Outcome lanes background */
+.outcome-lanes rect {
+  pointer-events: none;
+}
+
+/* Confusion bar tooltip */
+.confusion-bar-tooltip {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  max-width: 300px;
+}
+
+.confusion-bar-tooltip div {
+  margin: 2px 0;
+}
+
+/* Confusion bar legends */
+.confusion-bar-legends text {
+  user-select: none;
+}

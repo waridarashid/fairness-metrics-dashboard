@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- D3 + Sankey -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+  
+  <title>Fairness Metric Dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="/static/palette.js"></script>
+  <script defer src="/static/script.js"></script>
+</head>
+<body>
+  <header id="dashboard-title">FAIRNESS METRIC DASHBOARD</header>
+
+  <div class="dashboard-container">
+
+    <!-- LEFT: CONTROLS -->
+    <aside id="controls-panel">
+      <div class="panel-header">METRICS AND PROTECTED GROUPS</div>
+      <div class="content">
+
+        <!-- Metrics -->
+        <div class="section">
+          <h3 style="display: flex; justify-content: space-between; align-items: center;">
+            <span>SELECT METRIC</span>
+            <button id="deselect-metric-btn" style="font-size: 0.7rem; padding: 2px 8px; cursor: pointer;">Clear</button>
+          </h3>
+          <div class="checkbox-group" id="metric-options">
+            <label><input type="radio" name="metric" id="equal_opportunity"> Equal Opportunity</label>
+            <label><input type="radio" name="metric" id="predictive_parity"> Predictive Parity</label>
+            <label><input type="radio" name="metric" id="equalized_odds"> Equalized Odds</label>
+            <label><input type="radio" name="metric" id="demographic_parity"> Demographic Parity</label>
+            <label><input type="radio" name="metric" id="predictive_equality"> Predictive Equality</label>
+            <label><input type="radio" name="metric" id="treatment_equality"> Treatment Equality</label>
+          </div>
+        </div>
+
+        <div id="metric-equation-wrap" style="margin-top:8px;">
+          <h3>Metric Equation</h3>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div id="metric-equation" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.9rem;">
+              <!-- filled by JS -->
+            </div>
+            <button id="metric-help-btn" style="display: none; width: 20px; height: 20px; border-radius: 50%; font-size: 0.75rem; font-weight: bold; cursor: pointer; border: 1px solid #666; background: #f0f0f0; padding: 0;">?</button>
+          </div>
+          <div id="metric-definition" style="display: none; margin-top: 6px; padding: 8px; background: #f9f9f9; border-left: 3px solid #4a90e2; font-size: 0.85rem; font-style: italic; color: #333;">
+            <!-- filled by JS -->
+          </div>
+        </div>
+
+        <!-- Protected attrs -->
+        <div class="section">
+          <h3>SELECT PROTECTED GROUPS</h3>
+          <div class="checkbox-group" id="feature-options">
+            <label><input type="checkbox" id="age" checked> Age</label>
+            <label><input type="checkbox" id="gender"> Gender</label>
+            <label><input type="checkbox" id="marital_status"> Marital Status</label>
+          </div>
+        </div>
+
+        <!-- Threshold -->
+        <div class="section">
+          <h3>DECISION THRESHOLD</h3>
+          <input type="range" id="threshold-slider" min="0" max="1" step="0.01" />
+        </div>
+
+        <!-- === Neutralization UI (MOVED HERE) === -->
+        <div class="section" id="neutralize-ui" style="border-top: 2px solid #ddd; margin-top: 16px; padding-top: 16px;">
+          <h3>NEUTRALIZE (Feature Distribution)</h3>
+
+          <div class="neutralize-info" style="font-size: 10px; color: #666; margin-bottom: 8px;">
+            <strong>1.</strong> Select protected attribute from checkboxes above<br>
+            <strong>2.</strong> Click PCP axis labels to select features to neutralize<br>
+            <strong>3.</strong> (Optional) Click confusion bars to select subgroups<br>
+            <strong>Goal:</strong> Align feature distributions across groups
+          </div>
+
+          <!-- Selected features to neutralize -->
+          <div style="margin-bottom: 10px;">
+            <label style="display:block; font-size:10px; font-weight:600; margin-bottom:4px;">Features to neutralize:</label>
+            <div id="neutralize-selected-features" class="neutralize-selected-list" style="min-height: 20px; display: flex; flex-wrap: wrap; gap: 4px;">
+              <span class="muted" style="font-size:9px;">None</span>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="neutralize-buttons">
+            <button id="btn-apply-neutral" type="button">Apply Neutralization</button>
+            <button id="btn-revert-neutral" type="button" disabled>Revert</button>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ───────── CENTER: MAIN ───────── -->
+    <main id="main-panel">
+
+      <!-- Confusion Matrix + Metric Scores (side-by-side) -->
+      <section id="sankey-and-metrics" class="row-split">
+        <!-- LEFT: Confusion Matrix panel (aligns with PCP below) -->
+        <section id="sankey-panel" class="panel" style="flex: 2 1 0;">
+          <div class="panel-header" style="display: flex; justify-content: center; align-items: center; position: relative;">
+            <span>CONFUSION MATRIX DISTRIBUTION</span>
+            <button id="confusion-reset-btn" title="Clear selections" style="position: absolute; right: 6px; font-size: 18px; padding: 2px 8px; border-radius: 3px; border: 1px solid #999; background: #fff; cursor: pointer; line-height: 1;">&#x21BB;</button>
+          </div>
+          <div class="panel-body">
+            <div id="sankey-placeholder"></div>
+
+            <!-- legends under confusion bars -->
+            <div id="legend-row">
+              <div id="link-legend" class="legend-block"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RIGHT: Metric scores panel -->
+        <section id="group-metrics-panel" class="panel" style="flex: 1 1 0;">
+          <div class="panel-header">METRIC SCORES</div>
+          <div class="panel-body">
+            <div id="group-bars"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <!-- ───────── FEATURE EXPLORER (Full Width Below Main) ───────── -->
+    <section id="feature-explorer">
+      <div class="panel-header">FEATURE EXPLORER</div>
+      <div id="feature-explorer-content" class="row-split">
+        <!-- LEFT: PCP panel -->
+        <section id="pcp-section" class="panel" style="flex: 2 1 0;">
+          <div class="panel-body">
+            <div id="pcp"></div>
+            <div id="pcp-legend" style="font-size:.85rem;margin-top:6px;">
+              <span class="legend-box" style="background:#74a9cf"></span>Correct&nbsp;&nbsp;
+              <span class="legend-box" style="background:#de2d26"></span>Misclassified
+            </div>
+          </div>
+        </section>
+
+        <!-- RIGHT: Distribution panel -->
+        <section id="distribution-panel" class="panel" style="flex: 1 1 0;">
+          <div class="panel-header" style="display: flex; justify-content: center; align-items: center; position: relative;">
+            <span>SCORE DISTRIBUTION</span>
+            <button id="distribution-reset-btn" title="Clear selections" style="position: absolute; right: 6px; font-size: 18px; padding: 2px 8px; border-radius: 3px; border: 1px solid #999; background: #fff; cursor: pointer; line-height: 1;">&#x21BB;</button>
+          </div>
+          <div class="panel-body">
+            <div id="feature-distribution-chart" style="height: 280px; overflow: auto;"></div>
+          </div>
+        </section>
+      </div>
+    </section> 
+
+
+
+  </div>
+</body>
+</html>
