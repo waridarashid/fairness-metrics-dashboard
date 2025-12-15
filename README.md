@@ -228,7 +228,6 @@ Performs feature neutralization.
 ### Tooltips & Help
 - Hover over bars for detailed counts and percentages
 - Click **?** button next to metric equation for definition
-- Significance markers (★) indicate statistical significance (p < 0.05)
 
 ## Usage Example
 
