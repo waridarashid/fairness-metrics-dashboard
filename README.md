@@ -30,7 +30,7 @@ This dashboard provides a comprehensive visual analysis system for exploring fai
 - **Selection Hierarchy**: Coordinated filtering between confusion bars and score distributions
 - **Brushing & Filtering**: Interactive selection in PCP with real-time updates
 - **Neutralization Analysis**: Compare original vs. neutralized model predictions
-- **Statistical Significance**: Permutation tests to identify significant features.
+
 
 ## Project Structure
 
